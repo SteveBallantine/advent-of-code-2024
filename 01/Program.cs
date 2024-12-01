@@ -9,8 +9,13 @@ var exampleInput = @"3   4
 3   9
 3   3";
 AssertFor(exampleInput, false, 11);
+AssertFor(exampleInput, true, 31);
 
+Console.WriteLine("Part1");
 Console.WriteLine(RunFor(File.ReadAllLines(@"/Users/steveballantine/RiderProjects/advent-of-code-2024/01/input.txt"), false, false));
+
+Console.WriteLine("Part2");
+Console.WriteLine(RunFor(File.ReadAllLines(@"/Users/steveballantine/RiderProjects/advent-of-code-2024/01/input.txt"), true, false));
 
 
 long RunFor(string[] input, bool part2, bool logging)
@@ -29,9 +34,19 @@ long RunFor(string[] input, bool part2, bool logging)
     var sl2 = l2.Order().ToArray();
 
     var result = 0;
-    for (int i = 0; i < sl1.Count(); i++)
+    if (!part2)
     {
-        result += Math.Max(sl1[i], sl2[i]) - Math.Min(sl1[i], sl2[i]);
+        for (int i = 0; i < sl1.Count(); i++)
+        {
+            result += Math.Max(sl1[i], sl2[i]) - Math.Min(sl1[i], sl2[i]);
+        }
+    }
+    else
+    {
+        foreach (var entry in sl1)
+        {
+            result += entry * sl2.Count(x => x == entry);
+        }
     }
 
     return result;
