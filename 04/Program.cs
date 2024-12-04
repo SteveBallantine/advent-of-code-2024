@@ -9,6 +9,13 @@
     new ("SW", -1, 1, "NE"),
     new ("SE", 1, 1, "NW"),
 };
+Direction[] XDirections =
+{
+    new ("NW", -1, -1, "SE"),
+    new ("NE", 1, -1, "SW"),
+    new ("SW", -1, 1, "NE"),
+    new ("SE", 1, 1, "NW"),
+};
 
 var exampleInput = @"MMMSXXMASM
 MSAMXMSMSA
@@ -21,13 +28,13 @@ SAXAMASAAA
 MAMMMXMMMM
 MXMXAXMASX";
 AssertFor(exampleInput, false, 18);
-//AssertFor(exampleInput, true, 9);
+AssertFor(exampleInput, true, 9);
 
 Console.WriteLine("Part1:");
 Console.WriteLine(RunFor(File.ReadAllLines(@"/Users/steveballantine/RiderProjects/advent-of-code-2024/04/input.txt"), false, false));
 
-//Console.WriteLine("Part2:");
-//Console.WriteLine(RunFor(File.ReadAllLines(@"/Users/steveballantine/RiderProjects/advent-of-code-2024/04/input.txt"), true, false));
+Console.WriteLine("Part2:");
+Console.WriteLine(RunFor(File.ReadAllLines(@"/Users/steveballantine/RiderProjects/advent-of-code-2024/04/input.txt"), true, false));
 
 
 long RunFor(string[] input, bool part2, bool logging)
@@ -35,12 +42,18 @@ long RunFor(string[] input, bool part2, bool logging)
     var result = 0;
     
     Map map = new Map(Directions, input.Select(s => s.ToCharArray()).ToArray());
-    var starts = map.FindLabel('X').SelectMany(p =>
+
+    if (part2)
     {
-        return Directions.Select(d => new LocationVector(p,  d));
-    });
-    
-    result = starts.Count(s =>{ return IsXmas(map, s); });
+        var starts = map.FindLabel('A');
+        result = starts.Count(s => { return IsXmas2(map, s); });
+    }
+    else
+    {
+        var starts = map.FindLabel('X').SelectMany(p => { return Directions.Select(d => new LocationVector(p, d)); });
+
+        result = starts.Count(s => { return IsXmas(map, s); });
+    }
 
     if (logging)
     {
@@ -63,6 +76,24 @@ void AssertFor(string input, bool part2, long expectedResult)
         throw new Exception($"Result was {result} but expected {expectedResult}");
     }
 }
+
+bool IsXmas2(Map map, Point start)
+{
+    var nw = map.GetLabelAt(map.GetNextPointInDirection(XDirections[0], start)?.B);
+    var ne = map.GetLabelAt(map.GetNextPointInDirection(XDirections[1], start)?.B);
+    var sw = map.GetLabelAt(map.GetNextPointInDirection(XDirections[2], start)?.B);
+    var se = map.GetLabelAt(map.GetNextPointInDirection(XDirections[3], start)?.B);
+
+    var result = nw != null && ne != null && sw != null && se != null &&
+        (nw == 'M' || nw == 'S') && (se == 'M' || se == 'S') && nw != se &&
+        (ne == 'M' || ne == 'S') && (sw == 'M' || sw == 'S') && ne != sw;
+    if (result)
+    {
+        map.Mark(start);
+    }
+    return result;
+}
+
 
 bool IsXmas(Map map, LocationVector start)
 {
@@ -140,6 +171,7 @@ class Map
             }
             Console.WriteLine();
         }
+        Console.WriteLine();
     }
     
     public void Mark(Point p)
@@ -149,8 +181,9 @@ class Map
 
     public bool[][] GetMarked => _marked;
 
-    public char GetLabelAt(Point p)
+    public char? GetLabelAt(Point? p)
     {
+        if (p == null) return null;
         return _locations[p.Y][p.X];
     }
     
