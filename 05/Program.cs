@@ -29,12 +29,13 @@ var exampleInput = @"47|53
 61,13,29
 97,13,75,29,47";
 AssertFor(exampleInput, false, 143);
+AssertFor(exampleInput, true, 123);
 
 Console.WriteLine("Part1:");
 Console.WriteLine(RunFor(File.ReadAllLines(@"/Users/steveballantine/RiderProjects/advent-of-code-2024/05/input.txt"), false, false));
 
-//Console.WriteLine("Part2:");
-//Console.WriteLine(RunFor(File.ReadAllLines(@"/Users/steveballantine/RiderProjects/advent-of-code-2024/05/input.txt"), true, false));
+Console.WriteLine("Part2:");
+Console.WriteLine(RunFor(File.ReadAllLines(@"/Users/steveballantine/RiderProjects/advent-of-code-2024/05/input.txt"), true, false));
 
 
 long RunFor(string[] input, bool part2, bool logging)
@@ -43,7 +44,17 @@ long RunFor(string[] input, bool part2, bool logging)
     var pageLists = new List<int[]>();
     
     Parse(input, pagesThatMustBeAfterKey, pageLists);
-    return pageLists.Where(l => IsValid(l, pagesThatMustBeAfterKey))
+
+    if (!part2)
+    {
+        return pageLists.Where(l => IsValid(l, pagesThatMustBeAfterKey))
+            .Select(l => l[l.Length / 2])
+            .Sum();
+    }
+    
+    var invalidLists = pageLists.Where(l => !IsValid(l, pagesThatMustBeAfterKey));
+    
+    return invalidLists.Select(l => FixList(l, pagesThatMustBeAfterKey))
         .Select(l => l[l.Length / 2])
         .Sum();
 }
@@ -60,6 +71,41 @@ void AssertFor(string input, bool part2, long expectedResult)
         }
         throw new Exception($"Result was {result} but expected {expectedResult}");
     }
+}
+
+int[] FixList(int[] pageList, Dictionary<int, List<int>> pagesThatMustBeAfterKey)
+{
+    var newList = new List<int>();
+    var previousPages = new List<int>();
+
+    var relevantRules = pageList.ToDictionary(pageNo => pageNo,
+        pageNo => pagesThatMustBeAfterKey.TryGetValue(pageNo, out var pagesThatMustBeAfter) ? 
+            pagesThatMustBeAfter.Where(pageList.Contains).ToArray() : []);
+
+    foreach (var pageNo in pageList)
+    {
+        if (relevantRules.TryGetValue(pageNo, out var pagesThatMustBeAfter))
+        {
+            if (previousPages.Any(p => pagesThatMustBeAfter.Contains(p)))
+            {
+                int indexToInsertAt = 0;
+                while (!pagesThatMustBeAfter.Contains(newList[indexToInsertAt]))
+                {
+                    indexToInsertAt++;
+                }
+                newList.Insert(indexToInsertAt, pageNo);
+            }
+            else
+            {
+                newList.Add(pageNo);
+            }
+        }
+        
+        Console.WriteLine(string.Join(",", newList));
+        previousPages.Add(pageNo);
+    }
+
+    return newList.ToArray();
 }
 
 bool IsValid(int[] pageList, Dictionary<int, List<int>> pagesThatMustBeAfterKey)
@@ -81,8 +127,6 @@ bool IsValid(int[] pageList, Dictionary<int, List<int>> pagesThatMustBeAfterKey)
 
     return previousPages.Count == pageList.Length;
 }
-
-
 
 void Parse(string[] strings, Dictionary<int, List<int>> pagesThatMustBeAfterKey, List<int[]> pageLists)
 {
