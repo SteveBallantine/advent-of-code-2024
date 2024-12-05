@@ -1,4 +1,4 @@
-﻿Direction[] Directions =
+﻿Direction[] directions =
 {
     new ("N", 0, -1, "S"),
     new ("S", 0, 1, "N"),
@@ -9,13 +9,14 @@
     new ("SW", -1, 1, "NE"),
     new ("SE", 1, 1, "NW"),
 };
-Direction[] XDirections =
-{
-    new ("NW", -1, -1, "SE"),
-    new ("NE", 1, -1, "SW"),
-    new ("SW", -1, 1, "NE"),
-    new ("SE", 1, 1, "NW"),
-};
+var n = directions.Single(d => d.Label == "N");
+var s = directions.Single(d => d.Label == "S");
+var e = directions.Single(d => d.Label == "E");
+var w = directions.Single(d => d.Label == "W");
+var nw = directions.Single(d => d.Label == "NW");
+var ne = directions.Single(d => d.Label == "NE");
+var sw = directions.Single(d => d.Label == "SW");
+var se = directions.Single(d => d.Label == "SE");
 
 var exampleInput = @"MMMSXXMASM
 MSAMXMSMSA
@@ -41,7 +42,7 @@ long RunFor(string[] input, bool part2, bool logging)
 {
     var result = 0;
     
-    Map map = new Map(Directions, input.Select(s => s.ToCharArray()).ToArray());
+    Map map = new Map(directions, input.Select(s => s.ToCharArray()).ToArray());
 
     if (part2)
     {
@@ -50,7 +51,7 @@ long RunFor(string[] input, bool part2, bool logging)
     }
     else
     {
-        var starts = map.FindLabel('X').SelectMany(p => { return Directions.Select(d => new LocationVector(p, d)); });
+        var starts = map.FindLabel('X').SelectMany(p => { return directions.Select(d => new LocationVector(p, d)); });
 
         result = starts.Count(s => { return IsXmas(map, s); });
     }
@@ -79,14 +80,14 @@ void AssertFor(string input, bool part2, long expectedResult)
 
 bool IsXmas2(Map map, Point start)
 {
-    var nw = map.GetLabelAt(map.GetNextPointInDirection(XDirections[0], start)?.B);
-    var ne = map.GetLabelAt(map.GetNextPointInDirection(XDirections[1], start)?.B);
-    var sw = map.GetLabelAt(map.GetNextPointInDirection(XDirections[2], start)?.B);
-    var se = map.GetLabelAt(map.GetNextPointInDirection(XDirections[3], start)?.B);
+    var lNw = map.GetLabelAt(map.GetNextPointInDirection(nw, start)?.B);
+    var lNe = map.GetLabelAt(map.GetNextPointInDirection(ne, start)?.B);
+    var lSw = map.GetLabelAt(map.GetNextPointInDirection(sw, start)?.B);
+    var lSe = map.GetLabelAt(map.GetNextPointInDirection(se, start)?.B);
 
-    var result = nw != null && ne != null && sw != null && se != null &&
-        (nw == 'M' || nw == 'S') && (se == 'M' || se == 'S') && nw != se &&
-        (ne == 'M' || ne == 'S') && (sw == 'M' || sw == 'S') && ne != sw;
+    var result = lNw != null && lNe != null && lSw != null && lSe != null &&
+                 (lNw == 'M' || lNw == 'S') && (lSe == 'M' || lSe == 'S') && lNw != lSe &&
+                 (lNe == 'M' || lNe == 'S') && (lSw == 'M' || lSw == 'S') && lNe != lSw;
     if (result)
     {
         map.Mark(start);
@@ -178,8 +179,6 @@ class Map
     {
         _marked[p.Y][p.X] = true;
     }
-
-    public bool[][] GetMarked => _marked;
 
     public char? GetLabelAt(Point? p)
     {
