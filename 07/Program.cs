@@ -2,7 +2,8 @@
 
 using NCalc;
 
-var Operators = new char[] { '*', '+' };
+var Operators1 = new char[] { '*', '+' };
+var Operators2 = new char[] { '*', '+', '|' };
 var SplitChars = new [] { ' ', ':' };
 
 var exampleInput = @"190: 10 19
@@ -15,12 +16,13 @@ var exampleInput = @"190: 10 19
 21037: 9 7 18 13
 292: 11 6 16 20";
 AssertFor(exampleInput, false, 3749);
+AssertFor(exampleInput, true, 11387);
 
 Console.WriteLine("Part1:");
 Console.WriteLine(RunFor(File.ReadAllLines(@"/Users/steveballantine/RiderProjects/advent-of-code-2024/07/input.txt"), false, false));
 
-//Console.WriteLine("Part2:");
-//Console.WriteLine(RunFor(File.ReadAllLines(@"/Users/steveballantine/RiderProjects/advent-of-code-2024/07/input.txt"), true, false));
+Console.WriteLine("Part2:");
+Console.WriteLine(RunFor(File.ReadAllLines(@"/Users/steveballantine/RiderProjects/advent-of-code-2024/07/input.txt"), true, false));
 
 
 long RunFor(string[] input, bool part2, bool logging)
@@ -30,7 +32,7 @@ long RunFor(string[] input, bool part2, bool logging)
     var entries = Parse(input);
     foreach (var entry in entries)
     {
-        var match = FindMatchingSequence(entry.Expected, entry.Values);
+        var match = FindMatchingSequence(part2, entry.Expected, entry.Values);
         if (match != string.Empty)
         {
             if (logging)
@@ -58,14 +60,14 @@ void AssertFor(string input, bool part2, long expectedResult)
     }
 }
 
-string FindMatchingSequence(long expectedOutput, long[] numbers)
+string FindMatchingSequence(bool part2, long expectedOutput, long[] numbers)
 {
-    return Recurse(expectedOutput, numbers, 0, numbers[0].ToString(), numbers[0]);
+    return Recurse(part2, expectedOutput, numbers, 0, numbers[0].ToString(), numbers[0]);
 }
 
-string Recurse(long expectedOutput, long[] numbers, int position, string expressionText, long valueSoFar)
+string Recurse(bool part2, long expectedOutput, long[] numbers, int position, string expressionText, long valueSoFar)
 {
-    foreach (var o in Operators)
+    foreach (var o in part2 ? Operators2 : Operators1)
     {
         long newValue = 0;
         switch (o)
@@ -76,12 +78,15 @@ string Recurse(long expectedOutput, long[] numbers, int position, string express
             case '*':
                 newValue = valueSoFar * numbers[position + 1];
                 break;
+            case '|':
+                newValue = long.Parse($"{valueSoFar}{numbers[position + 1]}");
+                break;
         }
         string newExpressionText = string.Concat(expressionText, $"{o}{numbers[position + 1]}");
         
         if (position < numbers.Length - 2)
         {
-            var result = Recurse(expectedOutput, numbers, position + 1, newExpressionText, newValue);
+            var result = Recurse(part2, expectedOutput, numbers, position + 1, newExpressionText, newValue);
             if (result != string.Empty) { return result; }
         }
         else
