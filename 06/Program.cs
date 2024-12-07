@@ -38,16 +38,16 @@ long RunFor(string[] input, bool part2, bool logging)
     {
         map.Mark(current);
 
-        var nextPoint = map.GetNextPointInDirection(current.Direction, current.Location);
+        var next = map.Step(current);
         if (part2 &&
-            nextPoint != null &&
-            map.GetLabelAt(nextPoint) != '^' &&
-            ObstacleWouldCreateCycle(nextPoint, new Map(directions, input.Select(str => str.ToCharArray()).ToArray())))
+            next != null &&
+            map.GetLabelAt(next.Location) == '.' &&
+            ObstacleWouldCreateCycle(next.Location, new Map(directions, input.Select(str => str.ToCharArray()).ToArray())))
         {
-            map.SetObstacleAt(nextPoint);
+            map.SetObstacleAt(next.Location);
         }
         
-        current = map.Step(current);
+        current = next;
     }
 
     if (logging)
@@ -55,10 +55,9 @@ long RunFor(string[] input, bool part2, bool logging)
         map.LogToConsole();
     }
 
-    var result = map.GetMarked().Sum(row => row.Count(marked => marked));
     if (part2) return map.ObstacleCount;
     
-    return result;
+    return map.GetMarked().Sum(row => row.Count(marked => marked));
 }
 
 void AssertFor(string input, bool part2, long expectedResult)
