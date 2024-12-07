@@ -33,11 +33,6 @@ long RunFor(string[] input, bool part2, bool logging)
 {
     Map map = new Map(directions, input.Select(str => str.ToCharArray()).ToArray());
 
-    /*if (part2)
-    {
-        FindExistingCycles(map);
-    }*/
-
     LocationDirection? current = new LocationDirection(map.FindLabel('^').Single(), n);
     while (current != null)
     {
@@ -46,13 +41,13 @@ long RunFor(string[] input, bool part2, bool logging)
         var nextPoint = map.GetNextPointInDirection(current.Direction, current.Location);
         if (part2 &&
             nextPoint != null &&
-            map.GetLabelAt(nextPoint.B) != '^' &&
-            WouldCreateCycle(current.Location, map.GetNextDirection(current.Direction), map, nextPoint.B))
+            map.GetLabelAt(nextPoint) != '^' &&
+            ObstacleWouldCreateCycle(nextPoint, new Map(directions, input.Select(str => str.ToCharArray()).ToArray())))
         {
-            map.SetObstacleAt(nextPoint.B);
+            map.SetObstacleAt(nextPoint);
         }
         
-        current = map.Step(current, null);
+        current = map.Step(current);
     }
 
     if (logging)
@@ -80,42 +75,21 @@ void AssertFor(string input, bool part2, long expectedResult)
     }
 }
 
-void FindExistingCycles(Map m)
+    
+bool ObstacleWouldCreateCycle(Point obstacleLocation, Map map)
 {
-    for (var y = 0; y < m.Height; y++)
+    map.SetLabelAt(obstacleLocation, '#');
+
+    HashSet<LocationDirection> history = new();
+    LocationDirection? current = new LocationDirection(map.FindLabel('^').Single(), n);
+    
+    while (current != null && !history.Contains(current))
     {
-        for (var x = 0; x < m.Width; x++)
-        {
-            if (m.GetLabelAt(new Point(x, y)) != '#')
-            {
-                foreach (var d in directions)
-                {
-                    m.MarkCycleFrom(new LocationDirection(new Point(x, y), d), new HashSet<LocationDirection>());
-                }
-            }
-        }
-    }
-}
-    
-bool WouldCreateCycle(Point location, Direction direction, Map map, Point obstacle)
-{
-    HashSet<LocationDirection> previousLocationDirections = new HashSet<LocationDirection>();
-    
-    LocationDirection? current = new LocationDirection(location, direction);
-    bool foundCycle = false;
-    
-    while (current != null && foundCycle == false)
-    {
-        foundCycle = previousLocationDirections.Contains(current);
-        previousLocationDirections.Add(current);
-        
-        //foundCycle = (map.IsCycle(current.Location, current.Direction) ?? false) ||
-        //             map.GetPreviousDirectionsTraveledAt(current.Location).Contains(current.Direction);
-        
-        current = map.Step(current, obstacle);
+        history.Add(current);
+        current = map.Step(current);
     }
 
-    return foundCycle;
+    return current != null;
 }
 
 
@@ -127,10 +101,8 @@ class Map
     private readonly char[][] _locations;
     private readonly Dictionary<string, Direction> _directions;
     private readonly bool[][] _marked;
-    private readonly HashSet<Direction>[][] _previousDirectionsTraveledAtPoint;
     
     private readonly bool[][] _obstacle;
-    private readonly bool?[][][] _isCycle;
     
     public int Width => _locations[0].Length;
     public int Height => _locations.Length;
@@ -148,19 +120,10 @@ class Map
         
         _marked = new bool[Height][];
         _obstacle = new bool[Height][];
-        _isCycle = new bool?[Height][][];
-        _previousDirectionsTraveledAtPoint = new HashSet<Direction>[Height][];
         for(int i = 0; i < Height; i++)
         {
             _marked[i] = new bool[Width];
-            _isCycle[i] = new bool?[Width][];
             _obstacle[i] = new bool[Width];
-            _previousDirectionsTraveledAtPoint[i] = new HashSet<Direction>[Width];
-            for (int j = 0; j < Height; j++)
-            {
-                _isCycle[i][j] = new bool?[4];
-                _previousDirectionsTraveledAtPoint[i][j] = new HashSet<Direction>();
-            }
         }
     }
     
@@ -171,9 +134,8 @@ class Map
             for (var x = 0; x < Width; x++)
             {
                 var location = _locations[y][x];
-                if(_marked[y][x]) { Console.ForegroundColor = ConsoleColor.Red; }
-                if(_isCycle[y][x].Any(x => x ?? false)) { Console.ForegroundColor = ConsoleColor.Green; }
-                if (_obstacle[y][x]){ location = 'O'; }
+                if (_marked[y][x]) { Console.ForegroundColor = ConsoleColor.Red; }
+                if (_obstacle[y][x]) { location = 'O'; }
                 Console.Write(location);
                 Console.ForegroundColor = ConsoleColor.Gray;
             }
@@ -182,21 +144,20 @@ class Map
         Console.WriteLine();
     }
     
-    public LocationDirection? Step(LocationDirection start, Point? obstacle)
+    public LocationDirection? Step(LocationDirection start)
     {
         var (location, direction) = start;
     
-        var next = GetNextPointInDirection(direction, location)?.B;
+        var next = GetNextPointInDirection(direction, location);
         if (next == null)
         {
             return null;
         }
 
-        while (GetLabelAt(next) == '#' || 
-               (obstacle != null && next.X == obstacle.X && next.Y == obstacle.Y))
+        while (GetLabelAt(next) == '#')
         {
             direction = GetNextDirection(direction);
-            next = GetNextPointInDirection(direction, location)?.B;
+            next = GetNextPointInDirection(direction, location);
             if (next == null)
             {
                 return null;
@@ -215,7 +176,6 @@ class Map
     {
         var (p, d) = locationDirection;
         _marked[p.Y][p.X] = true;
-        _previousDirectionsTraveledAtPoint[p.Y][p.X].Add(d);
     }
     
     public void SetObstacleAt(Point p)
@@ -230,20 +190,15 @@ class Map
         if (p == null) return null;
         return _locations[p.Y][p.X];
     }
+
+    public void SetLabelAt(Point p, char label)
+    {
+        _locations[p.Y][p.X] = label;
+    }
     
     public bool IsMarked(Point p)
     {
         return _marked[p.Y][p.X];
-    }
-    
-    public bool? IsCycle(Point p, Direction d)
-    {
-        return _isCycle[p.Y][p.X][d.Index];
-    }
-    
-    public HashSet<Direction> GetPreviousDirectionsTraveledAt(Point p)
-    {
-        return _previousDirectionsTraveledAtPoint[p.Y][p.X];
     }
     
     public IEnumerable<Point> FindLabel(char label)
@@ -260,39 +215,10 @@ class Map
         }
     }
     
-    public bool MarkCycleFrom(LocationDirection current, HashSet<LocationDirection> pathSoFar)
-    {
-        Point? location = current.Location;
-        var direction = current.Direction;
-        var isCycle = _isCycle[location.Y][location.X][direction.Index];
-        if (isCycle.HasValue)
-        {
-            return isCycle.Value;
-        }
-
-        var next = Step(new LocationDirection(location, direction), null);
-        if (next == null)
-        {
-            _isCycle[location.Y][location.X][direction.Index] = false;
-            return false;
-        }
-        
-        if (pathSoFar.Contains(next))
-        {
-            _isCycle[location.Y][location.X][direction.Index] = true;
-            return true;
-        }
-        pathSoFar.Add(next);
-        var result =  MarkCycleFrom(next, pathSoFar);
-
-        _isCycle[location.Y][location.X][direction.Index] = result;
-        return result;
-    }
-    
-    public PointPair? GetNextPointInDirection(Direction d, Point p)
+    public Point? GetNextPointInDirection(Direction d, Point p)
     {
         var nextPoint = new Point(p.X + d.DeltaX, p.Y + d.DeltaY);
-        return PointIsInBounds(nextPoint) ? new PointPair(p, nextPoint, d) : null;
+        return PointIsInBounds(nextPoint) ? nextPoint : null;
     }
     
     private bool PointIsInBounds(Point p)
@@ -301,10 +227,6 @@ class Map
                p.Y >= 0 && p.Y < _locations.Length;
     }
     
-    private IEnumerable<PointPair> GetAdjacentPoints(Point p)
-    {
-        return _directions.Select(d => GetNextPointInDirection(d.Value, p)).Where(x => x is not null);
-    }
     
     public Direction? GetNextDirection (Direction d)
     {
