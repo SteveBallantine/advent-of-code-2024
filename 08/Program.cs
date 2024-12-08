@@ -25,13 +25,13 @@ var exampleInput = @"............
 ............
 ............";
 AssertFor(exampleInput, false, 14);
-//AssertFor(exampleInput, true, 34);
+AssertFor(exampleInput, true, 34);
 
 Console.WriteLine("Part1");
 Console.WriteLine(RunFor(File.ReadAllLines(@"/Users/steveballantine/RiderProjects/advent-of-code-2024/08/input.txt"), false, false));
 
-//Console.WriteLine("Part2");
-//Console.WriteLine(RunFor(File.ReadAllLines(@"/Users/steveballantine/RiderProjects/advent-of-code-2024/08/input.txt"), true, false));
+Console.WriteLine("Part2");
+Console.WriteLine(RunFor(File.ReadAllLines(@"/Users/steveballantine/RiderProjects/advent-of-code-2024/08/input.txt"), true, false));
 
 
 long RunFor(string[] input, bool part2, bool logging)
@@ -45,7 +45,12 @@ long RunFor(string[] input, bool part2, bool logging)
 
     foreach (var frequency in antennaFrequencies)
     {
-        MarkAntinodesFor(frequency, map);
+        MarkAntinodesFor(frequency, map, part2);
+    }
+
+    if (logging)
+    {
+        map.LogToConsole();
     }
     
     return map.GetMarked().Sum(row => row.Count(marked => marked));
@@ -54,7 +59,7 @@ long RunFor(string[] input, bool part2, bool logging)
 void AssertFor(string input, bool part2, long expectedResult)
 {
     var lines = input.Split(System.Environment.NewLine);
-    var result = RunFor(lines, part2, false);
+    var result = RunFor(lines, part2, true);
     if (result != expectedResult)
     {
         foreach (var line in lines)
@@ -65,20 +70,28 @@ void AssertFor(string input, bool part2, long expectedResult)
     }
 }
 
-void MarkAntinodesFor(char frequency, Map map)
+void MarkAntinodesFor(char frequency, Map map, bool part2)
 {
     var antennaLocations = map.FindLabel(frequency).ToArray();
     foreach (var antenna in antennaLocations)
     {
         foreach (var otherAntenna in antennaLocations.Where(l => l != antenna))
         {
-            var dX = (antenna.X - otherAntenna.X) * -2;
-            var dY = (antenna.Y - otherAntenna.Y) * -2;
-
-            var antinode = new Point(antenna.X + dX, antenna.Y + dY);
-            if (map.PointIsInBounds(antinode))
+            int multiple = part2 ? 1 : 2;
+            bool inBounds = true;
+            while (inBounds && (part2 || multiple == 2))
             {
-                map.Mark(antinode);
+                var dX = (antenna.X - otherAntenna.X) * -multiple;
+                var dY = (antenna.Y - otherAntenna.Y) * -multiple;
+
+                var antinode = new Point(antenna.X + dX, antenna.Y + dY);
+                inBounds = map.PointIsInBounds(antinode);
+                if(inBounds)
+                {
+                    map.Mark(antinode);
+                }
+
+                multiple++;
             }
         }
     }
