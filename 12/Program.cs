@@ -15,12 +15,14 @@ BBCD
 BBCC
 EEEC";
 AssertFor(exampleInput, false, 140);
+AssertFor(exampleInput, true, 80);
 var exampleInput2 = @"OOOOO
 OXOXO
 OOOOO
 OXOXO
 OOOOO";
 AssertFor(exampleInput2, false, 772);
+AssertFor(exampleInput2, true, 436);
 var exampleInput3 = @"RRRRIICCFF
 RRRRIICCCF
 VVRRRCCFFF
@@ -32,14 +34,27 @@ MIIIIIJJEE
 MIIISIJEEE
 MMMISSJEEE";
 AssertFor(exampleInput3, false, 1930);
+AssertFor(exampleInput3, true, 1206);
+var exampleInput4 = @"EEEEE
+EXXXX
+EEEEE
+EXXXX
+EEEEE";
+AssertFor(exampleInput4, true, 236);
+var exampleInput5 = @"AAAAAA
+AAABBA
+AAABBA
+ABBAAA
+ABBAAA
+AAAAAA";
+AssertFor(exampleInput5, true, 368);
 
-//AssertFor(exampleInput, true, 31);
 
 Console.WriteLine("Part1");
-Console.WriteLine(RunFor(File.ReadAllLines(@"/Users/steveballantine/RiderProjects/advent-of-code-2024/12/input.txt"), false, true));
+Console.WriteLine(RunFor(File.ReadAllLines(@"/Users/steveballantine/RiderProjects/advent-of-code-2024/12/input.txt"), false, false));
 
-//Console.WriteLine("Part2");
-//Console.WriteLine(RunFor(File.ReadAllLines(@"/Users/steveballantine/RiderProjects/advent-of-code-2024/12/input.txt"), true, false));
+Console.WriteLine("Part2");
+Console.WriteLine(RunFor(File.ReadAllLines(@"/Users/steveballantine/RiderProjects/advent-of-code-2024/12/input.txt"), true, false));
 
 
 long RunFor(string[] input, bool part2, bool logging)
@@ -47,7 +62,7 @@ long RunFor(string[] input, bool part2, bool logging)
     Map map = new Map(directions, input.Select(str => str.ToCharArray()).ToArray());
 
     var maxGroupId = IdentifyGroups(map);
-    var boundryCounts = CountGroupBoundries(map, maxGroupId);
+    var boundryCounts = CountGroupBoundries(map, maxGroupId, part2);
 
     var result = 0;
     
@@ -97,12 +112,15 @@ int IdentifyGroups(Map map)
     return nextGroupId - 1;
 }
 
-Dictionary<int, int> CountGroupBoundries(Map map, int maxGroupId)
+Dictionary<int, int> CountGroupBoundries(Map map, int maxGroupId, bool part2)
 {
     Dictionary<int, int> boundryCountByGroup = Enumerable.Range(0, maxGroupId + 1).ToDictionary(i => i, i => 0);
     
     for (int x = -1; x < map.Width; x++)
     {
+        int? lastG1 = -1;
+        int? lastG2 = -1;
+        
         for (int y = 0; y < map.Height; y++)
         {
             var g1 = map.GetGroupAt(new Point(x + 1, y));
@@ -110,30 +128,46 @@ Dictionary<int, int> CountGroupBoundries(Map map, int maxGroupId)
 
             if (g1 != g2)
             {
-                if (g1.HasValue) { boundryCountByGroup[g1.Value]++; }
-                if (g2.HasValue) { boundryCountByGroup[g2.Value]++; }
+                if (g1.HasValue && (!part2 || lastG1 != g1)) { boundryCountByGroup[g1.Value]++; }
+                if (g2.HasValue && (!part2 || lastG2 != g2)) { boundryCountByGroup[g2.Value]++; }
+                lastG1 = g1;
+                lastG2 = g2;
+            }
+            else
+            {
+                lastG1 = -1;
+                lastG2 = -1;
             }
         }
     }
-    
-    for (int x = 0; x < map.Width; x++)
+            
+    for (int y = -1; y < map.Height; y++)
     {
-        for (int y = -1; y < map.Height; y++)
+        int? lastG1 = -1;
+        int? lastG2 = -1;
+    
+        for (int x = 0; x < map.Width; x++)
         {
             var g1 = map.GetGroupAt(new Point(x, y + 1));
             var g2 = map.GetGroupAt(new Point(x, y));
 
             if (g1 != g2)
             {
-                if (g1.HasValue) { boundryCountByGroup[g1.Value]++; }
-                if (g2.HasValue) { boundryCountByGroup[g2.Value]++; }
+                if (g1.HasValue && (!part2 || lastG1 != g1)) { boundryCountByGroup[g1.Value]++; }
+                if (g2.HasValue && (!part2 || lastG2 != g2)) { boundryCountByGroup[g2.Value]++; }
+                lastG1 = g1;
+                lastG2 = g2;
+            }
+            else
+            {
+                lastG1 = -1;
+                lastG2 = -1;
             }
         }
     }
 
     return boundryCountByGroup;
 }
-
 
 record LocationDirection(Point Location, Direction Direction);
 record Direction(string Label, int DeltaX, int DeltaY, string OppositeDirectionLabel, int Index);
