@@ -16,19 +16,18 @@ Button A: X+69, Y+23
 Button B: X+27, Y+71
 Prize: X=18641, Y=10279";
 AssertFor(exampleInput, false, 480);
-//AssertFor(exampleInput, true, 31);
 
 Console.WriteLine("Part1");
 Console.WriteLine(RunFor(File.ReadAllLines(@"/Users/steveballantine/RiderProjects/advent-of-code-2024/13/input.txt"), false, false));
 
-//Console.WriteLine("Part2");
-//Console.WriteLine(RunFor(File.ReadAllLines(@"/Users/steveballantine/RiderProjects/advent-of-code-2024/13/input.txt"), true, false));
+Console.WriteLine("Part2");
+Console.WriteLine(RunFor(File.ReadAllLines(@"/Users/steveballantine/RiderProjects/advent-of-code-2024/13/input.txt"), true, false));
 
 
 long RunFor(string[] input, bool part2, bool logging)
 {
-    var cheapestWins = Parse(input).Select(FindCheapestWin);
-    return cheapestWins.Sum();
+    var machines = Parse(input, part2).ToArray();
+    return machines.Sum(GetCost);
 }
 
 void AssertFor(string input, bool part2, long expectedResult)
@@ -45,51 +44,62 @@ void AssertFor(string input, bool part2, long expectedResult)
     }
 }
 
-int FindCheapestWin(Machine m)
+long GetCost(Machine m)
 {
     var aCost = Math.Sqrt(m.A.X ^ 2 + m.A.Y ^ 2) / m.A.Price;
     var bCost = Math.Sqrt(m.B.X ^ 2 + m.B.Y ^ 2) / m.B.Price;
     
     var cB = aCost >= bCost ? m.B : m.A;
     var eB = aCost >= bCost ? m.A : m.B;
-
-    var maxCheapPressesX = m.Prize.X / cB.X;
-    var maxCheapPressesY = m.Prize.Y / cB.Y;
-    var maxCheapPresses = Math.Min(maxCheapPressesX, maxCheapPressesY);
     
+    var cBOriginLine = new Line(new Point(cB.X, cB.Y), new Point(0, 0));
+    var eBPrizeLine = new Line(new Point(m.Prize.X - eB.X, m.Prize.Y - eB.Y), new Point(m.Prize.X, m.Prize.Y));
 
-    int cP = maxCheapPresses;
-    while (cP >= 0)
+    var i = GetIntersection(cBOriginLine, eBPrizeLine);
+
+    if (i.X > 0 && i.Y > 0 &&
+        i.X % cB.X == 0 &&
+        (m.Prize.X - i.X) % eB.X == 0)
     {
-        var remainingDistanceX = m.Prize.X - (cP * cB.X);
-        var remainingDistanceY = m.Prize.Y - (cP * cB.Y);
-
-        var xPresses = Math.DivRem(remainingDistanceX, eB.X, out var xRemainder);
-        var yPresses = Math.DivRem(remainingDistanceY, eB.Y, out var yRemainder);
-        
-        if (xRemainder == 0 &&
-            yRemainder == 0 &&
-            xPresses == yPresses)
-        {
-            return cP * cB.Price + xPresses * eB.Price;
-        }
-        cP--;
+        var cBPresses = i.X / cB.X;
+        var eBPresses = (m.Prize.X - i.X) / eB.X;
+        return (cBPresses * cB.Price + eBPresses * eB.Price);
     }
 
     return 0;
 }
 
-IEnumerable<Machine> Parse(string[] input)
+Point GetIntersection(Line a, Line b)
+{        
+    double c1 = a.P2.Y - a.P1.Y;
+    double d1 = a.P1.X - a.P2.X;
+    double e1 = c1 * a.P1.X + d1 * a.P1.Y;
+
+    double c2 = b.P2.Y - b.P1.Y;
+    double d2 = b.P1.X - b.P2.X;
+    double e2 = c2 * b.P1.X + d2 * b.P1.Y;
+
+    double delta = c1 * d2 - c2 * d1;
+    
+    if (delta == 0) return new Point(-1, -1);
+    var x = (d2 * e1 - d1 * e2) / delta; 
+    var y = (c1 * e2 - c2 * e1) / delta;
+    return new Point((long)Math.Round(x), (long)Math.Round(y));
+}
+
+
+IEnumerable<Machine> Parse(string[] input, bool part2)
 {
     int line = 0;
-    while (line < input.Length - 3)
+    while (line <= input.Length - 3)
     {
         var v1 = GetValues(input[line]);
         var a = new Button(v1[0], v1[1], 3);
         var v2 = GetValues(input[line + 1]);
         var b = new Button(v2[0], v2[1], 1);
         var v3 = GetValues(input[line + 2]);
-        var prize = new Prize(v3[0], v3[1]);
+        
+        var prize = part2 ? new Prize(v3[0] + 10000000000000, v3[1] + 10000000000000) : new Prize(v3[0], v3[1]);
         
         yield return new Machine(a, b, prize);
         line += 4;
@@ -111,7 +121,11 @@ int[] GetValues(string input)
         .ToArray();
 }
 
+record Point(long X, long Y);
+
 record Button(int X, int Y, int Price);
-record Prize(int X, int Y);
+record Prize(long X, long Y);
+
+record Line(Point P1, Point P2);
 
 record Machine(Button A, Button B, Prize Prize);
