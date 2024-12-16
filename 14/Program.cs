@@ -28,39 +28,90 @@ AssertFor(exampleInput, new Room(11, 7), false, 12);
 
 Console.WriteLine("Part1");
 Console.WriteLine(RunFor(File.ReadAllLines(@"/Users/steveballantine/RiderProjects/advent-of-code-2024/14/input.txt"), new Room(101, 103), false, false));
-
-//Console.WriteLine("Part2");
-//Console.WriteLine(RunFor(File.ReadAllLines(@"/Users/steveballantine/RiderProjects/advent-of-code-2024/14/input.txt"), true, false));
+Console.WriteLine("Part2");
+Console.WriteLine(RunFor(File.ReadAllLines(@"/Users/steveballantine/RiderProjects/advent-of-code-2024/14/input.txt"), new Room(101, 103), true, false));
 
 
 long RunFor(string[] input, Room room, bool part2, bool logging)
 {
+    var robots = Parse(input);
+    return part2 ? RunPart2(robots, room) : RunPart1(robots, room);
+}
+
+long RunPart2(Robot[] robots, Room room)
+{
+    int t = 0;
+    Console.SetWindowSize(101, 103);
+    while (t < 100000)
+    {
+        var positions = robots
+            .Select(r => PostionAfterTime(r, t))
+            .Select(p => TranslateToRoomSpace(p, room));
+
+        HashSet<Point> processed = new HashSet<Point>();
+        int maxAdjacentDrones = 0;
+        var distinctPositions = positions.Distinct();
+        foreach (var pos in distinctPositions)
+        {
+            if (!processed.Contains(pos))
+            {
+                processed.Add(pos);
+                int adjacent = 0;
+                Queue<Point> next = new Queue<Point>();
+                next.Enqueue(pos);
+                while (next.Count > 0)
+                {
+                    var current = next.Dequeue();
+                    var neighbours = distinctPositions.Where(p =>
+                        (p.Y == current.Y && (p.X == current.X + 1 || p.X == current.X - 1)) ||
+                        (p.X == current.X && (p.Y == current.Y + 1 || p.Y == current.Y - 1)));
+                    foreach (var neighbour in neighbours)
+                    {
+                        if (!processed.Contains(neighbour))
+                        {
+                            adjacent++;
+                            processed.Add(neighbour);
+                            next.Enqueue(neighbour);
+                        }
+                    }
+                }
+
+                if (adjacent > maxAdjacentDrones)
+                {
+                    maxAdjacentDrones = adjacent;
+                }
+            }
+        }
+
+        if (maxAdjacentDrones > 8)
+        {
+            Console.WriteLine($"{t} - {maxAdjacentDrones}");
+        }
+        if (maxAdjacentDrones > 50)
+        {
+            break;
+        }
+        t++;
+    }
+
+    return t;
+}
+
+long RunPart1(Robot[] robots, Room room)
+{
     var secondsToRun = 100;
 
-    var robots = Parse(input);
     var finalRobotPositionsByQuadrant = robots
         .Select(r => (r, PostionAfterTime(r, secondsToRun)))
         .Select(p => (p.r, TranslateToRoomSpace(p.Item2, room)))
         .GroupBy(p => GetQuadrant(p.Item2, room));
-    
-    if (logging)
-    {
-        foreach (var entry in finalRobotPositionsByQuadrant)
-        {
-            Console.WriteLine($"Quad {entry.Key}");
-            foreach (var (robot, position) in entry)
-            {
-                Console.WriteLine($"{position.X}, {position.Y} - {robot.Position.X},{robot.Position.Y} - {robot.Velocity.X},{robot.Velocity.Y}");
-            }
-        }
-    }
 
     long result = 1;
     foreach (var quadrant in finalRobotPositionsByQuadrant.Where(g => g.Key != 0))
     {
         result *= quadrant.Count();
     }
-    
+
     return result;
 }
 
